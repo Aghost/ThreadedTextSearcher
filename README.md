@@ -1,0 +1,2 @@
+# ThreadedTextSearcher
+proof of concept
