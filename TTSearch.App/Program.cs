@@ -12,8 +12,6 @@ namespace TTSearch.App
         static void Main(string[] args) {
             if (args.Length > 0) {
                 var fr = new FileReader(@"../../0_LIBRARY/", args);
-
-                fr.Testing();
                 fr.FindInFiles();
             }
         }

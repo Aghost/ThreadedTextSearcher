@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace TTSearch.Business
 {
@@ -25,17 +26,25 @@ namespace TTSearch.Business
             WriteLine($"{_FilePath}, {String.Join(" ", _KeyWords)}");
         }
 
-        public void PrintResults() {
-        }
-
-        public void FindInFiles() {
-            string[] fileSystemEntries = Directory.GetFiles(_FilePath, "*.*", SearchOption.AllDirectories);
+        public void FindInFiles(string ext = "*.*") {
+            string[] fileSystemEntries = Directory.GetFiles(_FilePath, ext, SearchOption.AllDirectories);
             List<string> res = new List<string>();
 
-            Parallel.ForEach(fileSystemEntries, i => { ReadFile(i, res); });
+            Stopwatch sw = new();
+            sw.Start();
 
-            WriteLine("Read {0} lines in {1} file(s).", totalLinesRead, filesRead);
-            WriteLine("Press a key to see the results:");
+            // PARALLEL
+            //Parallel.ForEach(fileSystemEntries, i => ReadFile(i, res));
+            Parallel.ForEach(fileSystemEntries, i => ReadFileParallel(i, res));
+
+            // NON
+            //foreach (string str in fileSystemEntries) { ReadFile(str, res); }
+            //foreach (string str in fileSystemEntries) { ReadFileParallel(str, res); }
+            sw.Stop();
+
+            WriteLine("Read {0} lines in {1} file(s){2} in {3} ticks ({4} milliseconden).",
+                    totalLinesRead, filesRead, ext, sw.ElapsedTicks, sw.ElapsedMilliseconds);
+            WriteLine("Press a key to see the results ({0}):", res.Count);
             ReadKey();
 
             res.ForEach(r => WriteLine(r));
@@ -45,11 +54,25 @@ namespace TTSearch.Business
             string[] fileDataArray = File.ReadAllLines(filePath);
             int linesRead = 0;
 
-            //results.Add($"file {filePath} threadID: {Thread.CurrentThread.ManagedThreadId}");
+            foreach (string line in fileDataArray) {
+                if (line.Contains(_KeyWords[0])) { results.Add(
+                    $"{filePath} Contains: '{_KeyWords[0]}' At Line {linesRead}:\n\"{line}\"\nThread: {Thread.CurrentThread.ManagedThreadId})\n");
+                }
+
+                linesRead++;
+            }
+
+            totalLinesRead += linesRead;
+            filesRead++;
+        }
+
+        private void ReadFileParallel(string filePath, List<string> results) {
+            string[] fileDataArray = File.ReadAllLines(filePath);
+            int linesRead = 0;
 
             Parallel.ForEach(fileDataArray, line => {
                 if (line.Contains(_KeyWords[0])) { results.Add(
-                    $"\t>({filePath}) contains '{_KeyWords[0]}' at line {linesRead}:\n\"{line}\" (thread: {Thread.CurrentThread.ManagedThreadId})\n"
+                    $"{filePath} Contains: '{_KeyWords[0]}' At Line {linesRead}:\n\"{line}\"\nThread: {Thread.CurrentThread.ManagedThreadId})\n"
                 );}
 
                 linesRead++;
@@ -60,3 +83,19 @@ namespace TTSearch.Business
         }
     }
 }
+
+/*
+Stopwatch sw = new();
+sw.Start();
+sw.Stop();
+
+string tr = Thread.CurrentThread.ManagedThreadId.ToString();
+WriteLine($"Thread: [{(tr.Length < 2 ? '0' + tr : tr)}] Elapsed: [{sw.ElapsedTicks}], Path: [{filePath}]");
+sw.Reset();
+
+ReadKey();
+var items = from pair in resultsDict orderby pair.Value ascending select pair;
+foreach (KeyValuePair<string,long> pair in items) {
+    WriteLine($"{pair.Key} {pair.Value}");
+}
+*/
